@@ -1,0 +1,12 @@
+{
+  "name": "sosyalrobot-mention-bot",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "bot": "node bot.js"
+  },
+  "dependencies": {
+    "twitter-api-v2": "^1.23.0"
+  }
+}
