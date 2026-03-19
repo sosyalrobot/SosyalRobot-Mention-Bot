@@ -1,5 +1,9 @@
 {
   "processedMentionIds": [],
   "repliedUserCooldowns": {},
-  "lastRunAt": null
+  "lastRunAt": null,
+  "dailyCounter": {
+    "date": null,
+    "count": 0
+  }
 }

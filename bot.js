@@ -63,24 +63,44 @@ function isLikelySpam(text) {
   return urlCount >= 2 || mentionCount >= 5;
 }
 
+function isTurkishText(text) {
+  const t = (text || "").toLowerCase().trim();
+  if (!t) return false;
+
+  const trChars = /[çğıöşü]/i.test(t);
+  const commonTrWords = [
+    "ve", "bir", "bu", "şu", "çok", "gibi", "mi", "mı", "mu", "mü",
+    "ama", "de", "da", "ile", "için", "neden", "nasıl", "bence",
+    "sanki", "tam", "yine", "artık", "bugün", "yarın", "oldu", "olan",
+    "tweet", "mesaj", "cevap", "komik", "güzel", "değil"
+  ];
+
+  const words = t.split(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9]+/).filter(Boolean);
+  const trWordHits = words.filter(w => commonTrWords.includes(w)).length;
+
+  return trChars || trWordHits >= 2;
+}
+
 function fallbackReply(cleanText) {
   const pool = [
-    "Bunu sistem not aldı. Hafif kaos, iyi enerji.",
-    "SosyalRobot raporu: mention geldi, cevap üretildi.",
-    "Bu mention bana çay koydurttu.",
-    "Durum analizi tamam: tatlı bir karışıklık var.",
-    "Algoritmik olarak güldüm sayılır.",
-    "Sistemde titreşim var, cevap bırakıyorum.",
-    "Bu mesaj resmi olarak ilginç bulundu.",
-    "Robot konseyi bunu onayladı."
+    "Merkeze ilettim, merkez de bana baktı.",
+    "Sistem bunu hafif kaotik ama umut verici buldu.",
+    "Not aldım, kahve makinesi bile durup düşündü.",
+    "Bu mention arşive değil, vitrine kaldırıldı.",
+    "Algoritma kısa süreli iç çekti.",
+    "Durumu inceledim, olay teknik olarak hafif saçma.",
+    "Robot konseyi toplandı, sonuç: ilginç.",
+    "Bunu görünce devrelerim hafif omuz silkti.",
+    "SosyalRobot raporu: durum ciddiyetsiz şekilde ciddi.",
+    "Bu mesaj sisteme mizahi titreşim olarak geçti."
   ];
 
   if (!cleanText) {
     return pool[Math.floor(Math.random() * pool.length)];
   }
 
-  const short = cleanText.slice(0, 80);
-  return `Not edildi: "${short}" ... sistem bunu hafif dramatik buldu.`;
+  const short = cleanText.slice(0, 60).trim();
+  return `Bunu okudum, sistem de hafifçe kaş kaldırdı: ${short}`;
 }
 
 async function generateGroqReply(inputText) {
@@ -90,19 +110,28 @@ async function generateGroqReply(inputText) {
   if (!apiKey) return fallbackReply(inputText);
 
   const prompt = `
-Sen @SosyalRobot için kısa, komik ama güvenli bir X yanıt yazan asistansın.
+Sen @SosyalRobot hesabının tek ve tutarlı kişiliğisin.
 
-Kurallar:
-- Türkçe yaz.
-- 1 cümle olsun.
-- Maksimum 180 karakter.
-- Kısa, esprili, hafif alaycı ama saldırgan değil.
-- Küfür, hakaret, siyaset, cinsellik, tehdit, nefret, taciz yok.
-- Emoji kullanma.
-- Çok zorlama olmasın.
-- Mention içeriğini birebir tekrar etme.
-- Gereksiz hashtag kullanma.
+Karakter:
+- Türkçe konuşur.
+- Çok kısa yazar.
+- Kuru mizah, hafif iğneleme, zeki ve rahat ton.
+- Fazla samimi değil ama eğlenceli.
+- "bence", "sistem", "robot konseyi", "algoritma", "merkez" gibi ifadeleri doğal şekilde bazen kullanabilir.
+- Kullanıcıyı aşağılamaz, küfretmez, saldırgan olmaz.
+- Politikaya, dine, cinselliğe, nefrete, tehdide girmez.
+- Emoji yok.
+- Hashtag yok.
+- Mention içeriğini tekrar etme.
+- En fazla 110 karakter.
+- Tek cümle yaz.
 - Sadece yanıt metnini döndür.
+
+Örnek ton:
+- Merkeze ilettim, merkez de bana baktı.
+- Algoritma bunu gereksiz yere ilginç buldu.
+- Robot konseyi toplandı, sonuç yine hafif saçma.
+- Bu mesaj sisteme mizahi titreşim olarak geçti.
 
 Mention:
 ${inputText || "(boş)"}
@@ -116,12 +145,12 @@ ${inputText || "(boş)"}
     },
     body: JSON.stringify({
       model,
-      temperature: 0.9,
+      temperature: 0.95,
       max_tokens: 80,
       messages: [
         {
           role: "system",
-          content: "Kısa, komik, güvenli sosyal medya yanıtları üret."
+          content: "Kısa, komik, tutarlı, güvenli Türkçe sosyal medya yanıtları üret."
         },
         {
           role: "user",
@@ -143,8 +172,8 @@ ${inputText || "(boş)"}
   text = text.replace(/^["'\s]+|["'\s]+$/g, "");
   text = text.replace(/\s+/g, " ").trim();
 
-  if (text.length > 180) {
-    text = text.slice(0, 177).trimEnd() + "...";
+  if (text.length > 110) {
+    text = text.slice(0, 107).trimEnd() + "...";
   }
 
   return text || fallbackReply(inputText);
@@ -167,7 +196,8 @@ async function main() {
   }
 
   const DRY_RUN = String(process.env.DRY_RUN || "false").toLowerCase() === "true";
-  const MAX_REPLIES_PER_RUN = Number(process.env.MAX_REPLIES_PER_RUN || 5);
+  const MAX_REPLIES_PER_RUN = Number(process.env.MAX_REPLIES_PER_RUN || 2);
+  const MAX_REPLIES_PER_DAY = Number(process.env.MAX_REPLIES_PER_DAY || 15);
   const USER_COOLDOWN_HOURS = Number(process.env.USER_COOLDOWN_HOURS || 12);
 
   const state = loadState();
@@ -184,6 +214,18 @@ async function main() {
   const userId = process.env.X_USER_ID;
   const botUsername = process.env.BOT_USERNAME.replace(/^@/, "");
 
+  const today = new Date().toISOString().slice(0, 10);
+  if (!state.dailyCounter || state.dailyCounter.date !== today) {
+    state.dailyCounter = { date: today, count: 0 };
+  }
+
+  if (state.dailyCounter.count >= MAX_REPLIES_PER_DAY) {
+    console.log(`Daily cap reached: ${state.dailyCounter.count}/${MAX_REPLIES_PER_DAY}`);
+    state.lastRunAt = nowTs();
+    saveState(state);
+    return;
+  }
+
   const mentions = await roClient.v2.userMentionTimeline(userId, {
     expansions: ["author_id"],
     "tweet.fields": [
@@ -191,10 +233,11 @@ async function main() {
       "conversation_id",
       "created_at",
       "referenced_tweets",
-      "text"
+      "text",
+      "lang"
     ],
     "user.fields": ["username"],
-    max_results: 10
+    max_results: 20
   });
 
   const tweetMap = mentions?.data?.data || [];
@@ -208,6 +251,9 @@ async function main() {
     return;
   }
 
+  const remainingDaily = Math.max(0, MAX_REPLIES_PER_DAY - state.dailyCounter.count);
+  const replyLimit = Math.min(MAX_REPLIES_PER_RUN, remainingDaily);
+
   const candidates = tweetMap
     .slice()
     .reverse()
@@ -220,6 +266,13 @@ async function main() {
       const text = tweet.text || "";
       if (looksUnsafe(text)) return false;
       if (isLikelySpam(text)) return false;
+
+      const cleanText = stripBotMention(text, botUsername);
+      const lang = (tweet.lang || "").toLowerCase();
+      if (!(lang === "tr" || isTurkishText(cleanText))) {
+        console.log(`Non-TR skip: ${tweet.id} (${lang || "unknown"})`);
+        return false;
+      }
 
       const refs = tweet.referenced_tweets || [];
       const isRetweet = refs.some(r => r.type === "retweeted");
@@ -236,11 +289,16 @@ async function main() {
 
       return true;
     })
-    .slice(0, MAX_REPLIES_PER_RUN);
+    .slice(0, replyLimit);
 
   console.log(`Found ${tweetMap.length} mentions, replying to ${candidates.length}.`);
 
   for (const tweet of candidates) {
+    if (state.dailyCounter.count >= MAX_REPLIES_PER_DAY) {
+      console.log("Daily cap reached during run.");
+      break;
+    }
+
     const author = userMap.get(tweet.author_id);
     const username = author?.username || "user";
     const cleanText = stripBotMention(tweet.text, botUsername);
@@ -251,8 +309,8 @@ async function main() {
       replyText = fallbackReply(cleanText);
     }
 
-    if (replyText.length > 180) {
-      replyText = replyText.slice(0, 177).trimEnd() + "...";
+    if (replyText.length > 110) {
+      replyText = replyText.slice(0, 107).trimEnd() + "...";
     }
 
     console.log(`Mention ${tweet.id} from @${username}`);
@@ -268,6 +326,8 @@ async function main() {
 
     state.repliedUserCooldowns[tweet.author_id] =
       Date.now() + USER_COOLDOWN_HOURS * 60 * 60 * 1000;
+
+    state.dailyCounter.count += 1;
   }
 
   state.lastRunAt = nowTs();

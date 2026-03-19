@@ -1,24 +1,16 @@
 # SosyalRobot Mention Bot
 
-Free X mention reply bot for `@SosyalRobot` using:
-- GitHub Actions for scheduling
-- X API for mentions and replies
-- Groq for short funny Turkish responses
+GitHub Actions üzerinde çalışan, sadece `@SosyalRobot` mention'larını kontrol edip Türkçe mention'lara kısa ve komik yanıt veren basit bot.
 
-## Files
-- `bot.js` - main bot logic
-- `.github/workflows/bot.yml` - GitHub Actions schedule
-- `.env.example` - required secrets/variables
-- `state.json` - processed mention tracking
+## Özellikler
+- Sadece mention'lara cevap verir
+- Türkçe filtre
+- Günlük cevap limiti
+- Kullanıcı başı cooldown
+- Dry run desteği
+- Groq ile tutarlı SosyalRobot tonu
 
-## Setup
-1. Create a GitHub repo and upload these files.
-2. Add repo secrets in **Settings > Secrets and variables > Actions**.
-3. Start with `DRY_RUN=true`.
-4. Run the workflow manually once.
-5. If logs look good, set `DRY_RUN=false`.
-
-## Required GitHub Secrets
+## Gerekli GitHub Secrets
 - `X_APP_KEY`
 - `X_APP_SECRET`
 - `X_ACCESS_TOKEN`
@@ -30,10 +22,18 @@ Free X mention reply bot for `@SosyalRobot` using:
 - `GROQ_MODEL`
 - `DRY_RUN`
 - `MAX_REPLIES_PER_RUN`
+- `MAX_REPLIES_PER_DAY`
 - `USER_COOLDOWN_HOURS`
 
-## Notes
-- Replies only to mentions.
-- Skips already processed mentions.
-- Has basic spam and safety filters.
-- Commits `state.json` back to the repo after each run.
+## Önerilen başlangıç
+- `DRY_RUN=true`
+- `MAX_REPLIES_PER_RUN=1`
+- `MAX_REPLIES_PER_DAY=8`
+- `USER_COOLDOWN_HOURS=24`
+
+## Çalıştırma
+1. Repo'ya dosyaları yükle
+2. GitHub Secrets değerlerini ekle
+3. Actions sekmesinden workflow'u manuel çalıştır
+4. Logları kontrol et
+5. Her şey iyiyse `DRY_RUN=false` yap
